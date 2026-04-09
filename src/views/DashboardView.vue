@@ -46,6 +46,14 @@ const selectedNode = computed(() => {
   )
 })
 
+const selectedNodeAlerts = computed(() => {
+  if (!selectedNode.value) {
+    return []
+  }
+
+  return activeAlerts.value.filter((alert) => alert.nodeId === selectedNode.value?.id)
+})
+
 const routeLegs = computed(() => {
   const nodes = shipment.value?.routeNodes ?? []
 
@@ -192,8 +200,16 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
             <strong>{{ selectedNode.transportMode }}</strong>
           </div>
           <div class="detail-card">
+            <p>Security level</p>
+            <strong>{{ selectedNode.securityLevel }}</strong>
+          </div>
+          <div class="detail-card">
             <p>ETA</p>
             <strong>{{ selectedNode.eta }}</strong>
+          </div>
+          <div class="detail-card">
+            <p>Dwell time</p>
+            <strong>{{ selectedNode.dwellTime }}</strong>
           </div>
           <div class="detail-card">
             <p>Required temperature</p>
@@ -204,10 +220,80 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
             <strong>{{ selectedNode.actualTemp }}</strong>
           </div>
           <div class="detail-card">
+            <p>Storage capability</p>
+            <strong>{{ selectedNode.storageCapability }}</strong>
+          </div>
+          <div class="detail-card">
             <p>Certifications</p>
             <strong>{{ selectedNode.certifications.join(' | ') }}</strong>
           </div>
+          <div class="detail-card">
+            <p>Validator</p>
+            <strong>{{ selectedNode.validatorName }}</strong>
+          </div>
+          <div class="detail-card">
+            <p>Last validation</p>
+            <strong>{{ selectedNode.validatedAt }}</strong>
+          </div>
         </div>
+
+        <div class="route-focus-card__blocks">
+          <article class="route-focus-block">
+            <p class="section-heading__eyebrow">Operational capabilities</p>
+            <div class="tag-list">
+              <span v-for="item in selectedNode.operationalCapabilities" :key="item" class="tag-chip">
+                {{ item }}
+              </span>
+            </div>
+          </article>
+
+          <article class="route-focus-block">
+            <p class="section-heading__eyebrow">Handling capabilities</p>
+            <div class="tag-list">
+              <span v-for="item in selectedNode.handlingCapabilities" :key="item" class="tag-chip">
+                {{ item }}
+              </span>
+            </div>
+          </article>
+
+          <article class="route-focus-block">
+            <p class="section-heading__eyebrow">Monitoring systems</p>
+            <div class="tag-list">
+              <span v-for="item in selectedNode.monitoringSystems" :key="item" class="tag-chip">
+                {{ item }}
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <article class="route-focus-block">
+          <p class="section-heading__eyebrow">Node notes</p>
+          <p class="route-focus-card__note">{{ selectedNode.nodeNotes }}</p>
+        </article>
+
+        <article class="route-focus-block">
+          <div class="section-heading">
+            <div>
+              <p class="section-heading__eyebrow">Node alerts</p>
+              <h4>Signals for this checkpoint</h4>
+            </div>
+          </div>
+
+          <div v-if="selectedNodeAlerts.length" class="stack-list stack-list--compact">
+            <article v-for="alert in selectedNodeAlerts" :key="alert.id" class="stack-item">
+              <div class="stack-item__row">
+                <strong>{{ alert.title }}</strong>
+                <StatusPill :label="alert.severity" :tone="riskToTone(alert.severity)" />
+              </div>
+              <p>{{ alert.category }} | {{ alert.timestamp }}</p>
+              <p>{{ alert.description }}</p>
+            </article>
+          </div>
+
+          <div v-else class="empty-state empty-state--compact">
+            <p>No active alerts are directly linked to this node.</p>
+          </div>
+        </article>
       </article>
 
       <article class="panel-card">
@@ -250,6 +336,7 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
             <p>{{ node.locationType }} | {{ node.locationName }}</p>
             <p>{{ node.transportMode }} | ETA {{ node.eta }}</p>
             <p>Required {{ node.tempRange }} | Actual {{ node.actualTemp }}</p>
+            <p>{{ node.securityLevel }} | {{ node.validatorName }}</p>
           </button>
         </div>
       </article>

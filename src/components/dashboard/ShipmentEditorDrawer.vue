@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import type {
   LocationType,
   RiskLevel,
+  SecurityLevel,
   Shipment,
   ShipmentStatus,
   TransportMode,
@@ -22,10 +23,14 @@ const emit = defineEmits<{
 
 const form = ref<Shipment | null>(null)
 const certificationsMap = ref<Record<string, string>>({})
+const operationalCapabilitiesMap = ref<Record<string, string>>({})
+const handlingCapabilitiesMap = ref<Record<string, string>>({})
+const monitoringSystemsMap = ref<Record<string, string>>({})
 
 const shipmentStatuses: ShipmentStatus[] = ['Scheduled', 'In Transit', 'Delayed', 'Delivered']
 const riskLevels: RiskLevel[] = ['Low', 'Medium', 'High', 'Critical']
 const validationStatuses: ValidationStatus[] = ['Validated', 'Pending', 'Rejected']
+const securityLevels: SecurityLevel[] = ['Standard', 'Enhanced', 'High Security']
 const locationTypes: LocationType[] = [
   'Warehouse',
   'Airport',
@@ -42,6 +47,9 @@ function generateId(prefix: string) {
 function syncForm(nextShipment: Shipment | null) {
   form.value = nextShipment ? structuredClone(nextShipment) : null
   certificationsMap.value = {}
+  operationalCapabilitiesMap.value = {}
+  handlingCapabilitiesMap.value = {}
+  monitoringSystemsMap.value = {}
 
   if (!nextShipment) {
     return
@@ -49,6 +57,9 @@ function syncForm(nextShipment: Shipment | null) {
 
   nextShipment.routeNodes.forEach((node) => {
     certificationsMap.value[node.id] = node.certifications.join(', ')
+    operationalCapabilitiesMap.value[node.id] = node.operationalCapabilities.join(', ')
+    handlingCapabilitiesMap.value[node.id] = node.handlingCapabilities.join(', ')
+    monitoringSystemsMap.value[node.id] = node.monitoringSystems.join(', ')
   })
 }
 
@@ -112,12 +123,24 @@ function addNode() {
     eta: 'TBD',
     tempRange: form.value.requiredTempRange,
     actualTemp: form.value.actualAverageTemp,
+    securityLevel: 'Standard',
+    storageCapability: 'Transit staging area',
+    dwellTime: 'TBD',
+    operationalCapabilities: ['Staging'],
+    handlingCapabilities: ['Perishable goods'],
+    monitoringSystems: ['Track & Trace'],
+    validatorName: 'Pending assignment',
+    validatedAt: 'Awaiting approval',
+    nodeNotes: 'Transit node awaiting operational profiling.',
     riskScore: 'Medium',
     certifications: ['EU GDP'],
     validationStatus: 'Pending',
   })
 
   certificationsMap.value[nodeId] = 'EU GDP'
+  operationalCapabilitiesMap.value[nodeId] = 'Staging'
+  handlingCapabilitiesMap.value[nodeId] = 'Perishable goods'
+  monitoringSystemsMap.value[nodeId] = 'Track & Trace'
 }
 
 function duplicateNode(nodeId: string) {
@@ -141,6 +164,12 @@ function duplicateNode(nodeId: string) {
   })
 
   certificationsMap.value[duplicateId] = certificationsMap.value[nodeId] ?? sourceNode.certifications.join(', ')
+  operationalCapabilitiesMap.value[duplicateId] =
+    operationalCapabilitiesMap.value[nodeId] ?? sourceNode.operationalCapabilities.join(', ')
+  handlingCapabilitiesMap.value[duplicateId] =
+    handlingCapabilitiesMap.value[nodeId] ?? sourceNode.handlingCapabilities.join(', ')
+  monitoringSystemsMap.value[duplicateId] =
+    monitoringSystemsMap.value[nodeId] ?? sourceNode.monitoringSystems.join(', ')
 }
 
 function moveNode(nodeId: string, direction: 'up' | 'down') {
@@ -175,6 +204,9 @@ function removeNode(nodeId: string) {
 
   form.value.routeNodes = form.value.routeNodes.filter((node) => node.id !== nodeId)
   delete certificationsMap.value[nodeId]
+  delete operationalCapabilitiesMap.value[nodeId]
+  delete handlingCapabilitiesMap.value[nodeId]
+  delete monitoringSystemsMap.value[nodeId]
 }
 
 function handleSave() {
@@ -185,6 +217,18 @@ function handleSave() {
   form.value.routeNodes = form.value.routeNodes.map((node) => ({
     ...node,
     certifications: (certificationsMap.value[node.id] ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+    operationalCapabilities: (operationalCapabilitiesMap.value[node.id] ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+    handlingCapabilities: (handlingCapabilitiesMap.value[node.id] ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+    monitoringSystems: (monitoringSystemsMap.value[node.id] ?? '')
       .split(',')
       .map((item) => item.trim())
       .filter(Boolean),
@@ -379,8 +423,18 @@ function handleSave() {
                   </select>
                 </label>
                 <label>
+                  <span>Security level</span>
+                  <select v-model="node.securityLevel" class="input">
+                    <option v-for="level in securityLevels" :key="level" :value="level">{{ level }}</option>
+                  </select>
+                </label>
+                <label>
                   <span>ETA</span>
                   <input v-model="node.eta" class="input" />
+                </label>
+                <label>
+                  <span>Dwell time</span>
+                  <input v-model="node.dwellTime" class="input" />
                 </label>
                 <label>
                   <span>Temp range</span>
@@ -389,6 +443,10 @@ function handleSave() {
                 <label>
                   <span>Actual temp</span>
                   <input v-model="node.actualTemp" class="input" />
+                </label>
+                <label>
+                  <span>Storage capability</span>
+                  <input v-model="node.storageCapability" class="input" />
                 </label>
                 <label>
                   <span>Risk score</span>
@@ -408,9 +466,33 @@ function handleSave() {
                     </option>
                   </select>
                 </label>
+                <label>
+                  <span>Validator</span>
+                  <input v-model="node.validatorName" class="input" />
+                </label>
+                <label>
+                  <span>Last validation</span>
+                  <input v-model="node.validatedAt" class="input" />
+                </label>
                 <label class="editor-node-card__certs">
                   <span>Certifications</span>
                   <input v-model="certificationsMap[node.id]" class="input" />
+                </label>
+                <label class="editor-node-card__certs">
+                  <span>Operational capabilities</span>
+                  <input v-model="operationalCapabilitiesMap[node.id]" class="input" />
+                </label>
+                <label class="editor-node-card__certs">
+                  <span>Handling capabilities</span>
+                  <input v-model="handlingCapabilitiesMap[node.id]" class="input" />
+                </label>
+                <label class="editor-node-card__certs">
+                  <span>Monitoring systems</span>
+                  <input v-model="monitoringSystemsMap[node.id]" class="input" />
+                </label>
+                <label class="editor-node-card__certs">
+                  <span>Node notes</span>
+                  <textarea v-model="node.nodeNotes" class="input input--textarea" />
                 </label>
               </div>
             </article>

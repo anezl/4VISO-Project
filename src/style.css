@@ -149,6 +149,11 @@ p {
   background: #fff;
 }
 
+.input--textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
 .form-error {
   color: var(--critical);
   font-size: 0.92rem;
@@ -907,6 +912,7 @@ p {
 }
 
 .route-focus-card {
+  display: grid;
   gap: 1rem;
 }
 
@@ -918,6 +924,43 @@ p {
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
   color: var(--text-soft);
+}
+
+.route-focus-card__blocks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.route-focus-block {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: var(--bg-muted);
+  border: 1px solid rgba(16, 82, 63, 0.08);
+}
+
+.route-focus-card__note {
+  color: var(--text-soft);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(15, 125, 90, 0.12);
+  color: var(--brand-deep);
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 .certificate-card {
@@ -1120,6 +1163,7 @@ p {
   .editor-form-grid,
   .editor-node-card__grid,
   .editor-summary-grid,
+  .route-focus-card__blocks,
   .flow-node__info-grid,
   .detail-grid,
   .shipment-card__meta-grid {

@@ -12,6 +12,7 @@ export type ValidationStatus = 'Validated' | 'Pending' | 'Rejected'
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical'
 export type NotificationSeverity = RiskLevel
 export type CertificationStatus = 'Valid' | 'Expiring Soon' | 'Expired'
+export type SecurityLevel = 'Standard' | 'Enhanced' | 'High Security'
 
 export interface User {
   id: string
@@ -53,6 +54,15 @@ export interface RouteNode {
   eta: string
   tempRange: string
   actualTemp: string
+  securityLevel: SecurityLevel
+  storageCapability: string
+  dwellTime: string
+  operationalCapabilities: string[]
+  handlingCapabilities: string[]
+  monitoringSystems: string[]
+  validatorName: string
+  validatedAt: string
+  nodeNotes: string
   riskScore: RiskLevel
   certifications: string[]
   validationStatus: ValidationStatus
