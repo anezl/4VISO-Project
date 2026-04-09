@@ -52,6 +52,13 @@ function syncForm(nextShipment: Shipment | null) {
   })
 }
 
+function syncRouteMetadata(shipment: Shipment) {
+  shipment.originCity = shipment.routeNodes[0]?.city ?? shipment.originCity
+  shipment.destinationCity =
+    shipment.routeNodes[shipment.routeNodes.length - 1]?.city ?? shipment.destinationCity
+  shipment.progress = Math.min(100, Math.max(0, shipment.progress))
+}
+
 watch(
   () => props.shipment,
   (nextShipment) => {
@@ -61,6 +68,30 @@ watch(
 )
 
 const canRemoveNode = computed(() => (form.value?.routeNodes.length ?? 0) > 2)
+const routePreview = computed(() => form.value?.routeNodes.map((node) => node.city).join(' -> ') ?? '')
+const validationSummary = computed(() => {
+  if (!form.value) {
+    return '0 validated'
+  }
+
+  const validated = form.value.routeNodes.filter((node) => node.validationStatus === 'Validated').length
+  const pending = form.value.routeNodes.filter((node) => node.validationStatus === 'Pending').length
+  const rejected = form.value.routeNodes.filter((node) => node.validationStatus === 'Rejected').length
+
+  return `${validated} validated / ${pending} pending / ${rejected} rejected`
+})
+
+function nodeStageLabel(index: number, total: number) {
+  if (index === 0) {
+    return 'Origin'
+  }
+
+  if (index === total - 1) {
+    return 'Destination'
+  }
+
+  return 'Transit'
+}
 
 function addNode() {
   if (!form.value) {
@@ -68,14 +99,16 @@ function addNode() {
   }
 
   const nodeId = generateId('node')
+  const insertAt = Math.max(form.value.routeNodes.length - 1, 1)
+  const anchorNode = form.value.routeNodes[insertAt - 1] ?? form.value.routeNodes[0]
 
-  form.value.routeNodes.push({
+  form.value.routeNodes.splice(insertAt, 0, {
     id: nodeId,
     city: 'New city',
-    country: 'Country',
-    locationName: 'New checkpoint',
+    country: anchorNode?.country ?? 'Country',
+    locationName: 'Transit checkpoint',
     locationType: 'Hub',
-    transportMode: 'Road',
+    transportMode: anchorNode?.transportMode ?? 'Road',
     eta: 'TBD',
     tempRange: form.value.requiredTempRange,
     actualTemp: form.value.actualAverageTemp,
@@ -85,6 +118,54 @@ function addNode() {
   })
 
   certificationsMap.value[nodeId] = 'EU GDP'
+}
+
+function duplicateNode(nodeId: string) {
+  if (!form.value) {
+    return
+  }
+
+  const nodeIndex = form.value.routeNodes.findIndex((node) => node.id === nodeId)
+
+  if (nodeIndex === -1) {
+    return
+  }
+
+  const sourceNode = form.value.routeNodes[nodeIndex]
+  const duplicateId = generateId('node')
+
+  form.value.routeNodes.splice(nodeIndex + 1, 0, {
+    ...structuredClone(sourceNode),
+    id: duplicateId,
+    locationName: `${sourceNode.locationName} Copy`,
+  })
+
+  certificationsMap.value[duplicateId] = certificationsMap.value[nodeId] ?? sourceNode.certifications.join(', ')
+}
+
+function moveNode(nodeId: string, direction: 'up' | 'down') {
+  if (!form.value) {
+    return
+  }
+
+  const nodeIndex = form.value.routeNodes.findIndex((node) => node.id === nodeId)
+
+  if (nodeIndex === -1) {
+    return
+  }
+
+  const swapIndex = direction === 'up' ? nodeIndex - 1 : nodeIndex + 1
+
+  if (swapIndex < 0 || swapIndex >= form.value.routeNodes.length) {
+    return
+  }
+
+  const nextNodes = [...form.value.routeNodes]
+  const currentNode = nextNodes[nodeIndex]
+
+  nextNodes[nodeIndex] = nextNodes[swapIndex]
+  nextNodes[swapIndex] = currentNode
+  form.value.routeNodes = nextNodes
 }
 
 function removeNode(nodeId: string) {
@@ -109,10 +190,7 @@ function handleSave() {
       .filter(Boolean),
   }))
 
-  form.value.originCity = form.value.routeNodes[0]?.city ?? form.value.originCity
-  form.value.destinationCity =
-    form.value.routeNodes[form.value.routeNodes.length - 1]?.city ?? form.value.destinationCity
-
+  syncRouteMetadata(form.value)
   emit('save', structuredClone(form.value))
 }
 </script>
@@ -132,54 +210,87 @@ function handleSave() {
 
         <div v-if="form" class="editor-drawer__body">
           <section class="editor-drawer__section">
-            <label>
-              <span>Shipment title</span>
-              <input v-model="form.title" class="input" />
-            </label>
-            <label>
-              <span>Owner company</span>
-              <input v-model="form.ownerCompany" class="input" />
-            </label>
-            <label>
-              <span>Consignee</span>
-              <input v-model="form.consignee" class="input" />
-            </label>
-            <label>
-              <span>Product name</span>
-              <input v-model="form.productName" class="input" />
-            </label>
-            <label>
-              <span>Package type</span>
-              <input v-model="form.packageType" class="input" />
-            </label>
-            <label>
-              <span>Status</span>
-              <select v-model="form.status" class="input">
-                <option v-for="status in shipmentStatuses" :key="status" :value="status">
-                  {{ status }}
-                </option>
-              </select>
-            </label>
-            <label>
-              <span>Overall risk</span>
-              <select v-model="form.overallRisk" class="input">
-                <option v-for="risk in riskLevels" :key="risk" :value="risk">
-                  {{ risk }}
-                </option>
-              </select>
-            </label>
-            <label>
-              <span>Required temperature</span>
-              <input v-model="form.requiredTempRange" class="input" />
-            </label>
-            <label>
-              <span>Average temperature</span>
-              <input v-model="form.actualAverageTemp" class="input" />
-            </label>
-            <label>
-              <span>Progress %</span>
-              <input v-model.number="form.progress" type="number" min="0" max="100" class="input" />
-            </label>
+            <div class="section-heading">
+              <div>
+                <p class="section-heading__eyebrow">Route preview</p>
+                <h4>{{ routePreview }}</h4>
+              </div>
+            </div>
+
+            <div class="editor-summary-grid">
+              <article class="editor-summary-card">
+                <p>Nodes</p>
+                <strong>{{ form.routeNodes.length }}</strong>
+              </article>
+              <article class="editor-summary-card">
+                <p>Validation</p>
+                <strong>{{ validationSummary }}</strong>
+              </article>
+              <article class="editor-summary-card">
+                <p>Temperature</p>
+                <strong>{{ form.requiredTempRange }}</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="editor-drawer__section">
+            <div class="section-heading">
+              <div>
+                <p class="section-heading__eyebrow">Lane details</p>
+                <h4>Shipment level information</h4>
+              </div>
+            </div>
+
+            <div class="editor-form-grid">
+              <label>
+                <span>Shipment title</span>
+                <input v-model="form.title" class="input" />
+              </label>
+              <label>
+                <span>Owner company</span>
+                <input v-model="form.ownerCompany" class="input" />
+              </label>
+              <label>
+                <span>Consignee</span>
+                <input v-model="form.consignee" class="input" />
+              </label>
+              <label>
+                <span>Product name</span>
+                <input v-model="form.productName" class="input" />
+              </label>
+              <label>
+                <span>Package type</span>
+                <input v-model="form.packageType" class="input" />
+              </label>
+              <label>
+                <span>Status</span>
+                <select v-model="form.status" class="input">
+                  <option v-for="status in shipmentStatuses" :key="status" :value="status">
+                    {{ status }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                <span>Overall risk</span>
+                <select v-model="form.overallRisk" class="input">
+                  <option v-for="risk in riskLevels" :key="risk" :value="risk">
+                    {{ risk }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                <span>Required temperature</span>
+                <input v-model="form.requiredTempRange" class="input" />
+              </label>
+              <label>
+                <span>Average temperature</span>
+                <input v-model="form.actualAverageTemp" class="input" />
+              </label>
+              <label>
+                <span>Progress %</span>
+                <input v-model.number="form.progress" type="number" min="0" max="100" class="input" />
+              </label>
+            </div>
           </section>
 
           <section class="editor-drawer__section">
@@ -190,7 +301,7 @@ function handleSave() {
               </div>
 
               <button type="button" class="button button--secondary" @click="addNode">
-                Add node
+                Add transit node
               </button>
             </div>
 
@@ -200,16 +311,46 @@ function handleSave() {
               class="editor-node-card"
             >
               <div class="editor-node-card__header">
-                <h5>Node {{ index + 1 }}</h5>
+                <div>
+                  <p class="section-heading__eyebrow">
+                    Node {{ index + 1 }} - {{ nodeStageLabel(index, form.routeNodes.length) }}
+                  </p>
+                  <h5>{{ node.city }}, {{ node.country }}</h5>
+                </div>
 
-                <button
-                  type="button"
-                  class="button button--ghost"
-                  :disabled="!canRemoveNode"
-                  @click="removeNode(node.id)"
-                >
-                  Remove
-                </button>
+                <div class="editor-node-card__actions">
+                  <button
+                    type="button"
+                    class="button button--ghost"
+                    :disabled="index === 0"
+                    @click="moveNode(node.id, 'up')"
+                  >
+                    Move up
+                  </button>
+                  <button
+                    type="button"
+                    class="button button--ghost"
+                    :disabled="index === form.routeNodes.length - 1"
+                    @click="moveNode(node.id, 'down')"
+                  >
+                    Move down
+                  </button>
+                  <button
+                    type="button"
+                    class="button button--ghost"
+                    @click="duplicateNode(node.id)"
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    type="button"
+                    class="button button--ghost"
+                    :disabled="!canRemoveNode"
+                    @click="removeNode(node.id)"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
 
               <div class="editor-node-card__grid">
