@@ -10,12 +10,13 @@ import StatusPill from '@/components/shared/StatusPill.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useShipmentsStore } from '@/stores/shipments'
 import { formatDate, formatDateTime } from '@/utils/formatters'
-import { riskToTone } from '@/types/domain'
+import { riskToTone, validationToTone, type RiskLevel } from '@/types/domain'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const shipmentsStore = useShipmentsStore()
 const editorOpen = ref(false)
+const selectedNodeId = ref<string | null>(null)
 
 const shipment = computed(() => shipmentsStore.activeShipment)
 const activeAlerts = computed(() => shipment.value?.alerts.filter((alert) => alert.isActive) ?? [])
@@ -25,6 +26,48 @@ const validatedNodes = computed(
 const pendingCertificates = computed(
   () => shipment.value?.certifications.filter((certificate) => certificate.status !== 'Valid').length ?? 0,
 )
+
+const riskWeight: Record<RiskLevel, number> = {
+  Low: 1,
+  Medium: 2,
+  High: 3,
+  Critical: 4,
+}
+
+const selectedNode = computed(() => {
+  if (!shipment.value) {
+    return null
+  }
+
+  return (
+    shipment.value.routeNodes.find((node) => node.id === selectedNodeId.value) ??
+    shipment.value.routeNodes[0] ??
+    null
+  )
+})
+
+const routeLegs = computed(() => {
+  const nodes = shipment.value?.routeNodes ?? []
+
+  return nodes.slice(0, -1).map((node, index) => {
+    const nextNode = nodes[index + 1]
+    const legRisk = riskWeight[node.riskScore] >= riskWeight[nextNode.riskScore]
+      ? node.riskScore
+      : nextNode.riskScore
+    const legAlerts = activeAlerts.value.filter(
+      (alert) => alert.nodeId === node.id || alert.nodeId === nextNode.id,
+    ).length
+
+    return {
+      id: `${node.id}-${nextNode.id}`,
+      from: node,
+      to: nextNode,
+      mode: node.transportMode,
+      risk: legRisk,
+      alerts: legAlerts,
+    }
+  })
+})
 
 async function loadShipmentFromRoute() {
   const shipmentId = typeof route.params.shipmentId === 'string' ? route.params.shipmentId : ''
@@ -36,11 +79,30 @@ async function loadShipmentFromRoute() {
   editorOpen.value = route.query.edit === '1' && authStore.canEditRoutes
 }
 
+function syncSelectedNode() {
+  if (!shipment.value?.routeNodes.length) {
+    selectedNodeId.value = null
+    return
+  }
+
+  const hasCurrentNode = shipment.value.routeNodes.some((node) => node.id === selectedNodeId.value)
+
+  if (!hasCurrentNode) {
+    selectedNodeId.value = shipment.value.routeNodes[0]?.id ?? null
+  }
+}
+
+function selectNode(nodeId: string) {
+  selectedNodeId.value = nodeId
+}
+
 onMounted(loadShipmentFromRoute)
 watch(() => route.params.shipmentId, loadShipmentFromRoute)
+watch(shipment, syncSelectedNode, { immediate: true })
 
 async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
   await shipmentsStore.updateShipment(updatedShipment)
+  syncSelectedNode()
   editorOpen.value = false
 }
 </script>
@@ -49,10 +111,11 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
   <div v-if="shipment" class="page-section">
     <section class="dashboard-hero">
       <div>
-        <p class="section-heading__eyebrow">{{ shipment.reference }} • {{ shipment.ownerCompany }}</p>
+        <p class="section-heading__eyebrow">{{ shipment.reference }} - {{ shipment.ownerCompany }}</p>
         <h1>{{ shipment.title }}</h1>
         <p class="hero-card__copy">
           {{ shipment.originCity }} to {{ shipment.destinationCity }} for {{ shipment.productName }}.
+          Open any node below to inspect the route in full detail.
         </p>
       </div>
 
@@ -69,13 +132,127 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
       </div>
     </section>
 
-    <ShipmentFlow :shipment="shipment" />
+    <ShipmentFlow
+      :shipment="shipment"
+      :selected-node-id="selectedNodeId"
+      @select-node="selectNode"
+    />
 
     <section class="metrics-grid">
-      <MetricCard label="Route progress" :value="`${shipment.progress}%`" helper="Operational completion status" tone="brand" />
-      <MetricCard label="Active alerts" :value="activeAlerts.length" helper="Issues requiring operator attention" />
-      <MetricCard label="Validated nodes" :value="`${validatedNodes}/${shipment.routeNodes.length}`" helper="Nodes with approved validation status" />
-      <MetricCard label="Certificates at risk" :value="pendingCertificates" helper="Expiring soon or expired records" tone="warning" />
+      <MetricCard
+        label="Route progress"
+        :value="`${shipment.progress}%`"
+        helper="Operational completion status"
+        tone="brand"
+      />
+      <MetricCard
+        label="Active alerts"
+        :value="activeAlerts.length"
+        helper="Issues requiring operator attention"
+      />
+      <MetricCard
+        label="Validated nodes"
+        :value="`${validatedNodes}/${shipment.routeNodes.length}`"
+        helper="Nodes with approved validation status"
+      />
+      <MetricCard
+        label="Certificates at risk"
+        :value="pendingCertificates"
+        helper="Expiring soon or expired records"
+        tone="warning"
+      />
+    </section>
+
+    <section class="route-detail-grid">
+      <article v-if="selectedNode" class="panel-card route-focus-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-heading__eyebrow">Selected node</p>
+            <h3>{{ selectedNode.locationName }}</h3>
+          </div>
+
+          <StatusPill :label="selectedNode.riskScore" :tone="riskToTone(selectedNode.riskScore)" />
+        </div>
+
+        <div class="route-focus-card__meta">
+          <StatusPill
+            :label="selectedNode.validationStatus"
+            :tone="validationToTone(selectedNode.validationStatus)"
+          />
+          <p>{{ selectedNode.city }}, {{ selectedNode.country }}</p>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-card">
+            <p>Point type</p>
+            <strong>{{ selectedNode.locationType }}</strong>
+          </div>
+          <div class="detail-card">
+            <p>Transport mode</p>
+            <strong>{{ selectedNode.transportMode }}</strong>
+          </div>
+          <div class="detail-card">
+            <p>ETA</p>
+            <strong>{{ selectedNode.eta }}</strong>
+          </div>
+          <div class="detail-card">
+            <p>Required temperature</p>
+            <strong>{{ selectedNode.tempRange }}</strong>
+          </div>
+          <div class="detail-card">
+            <p>Actual temperature</p>
+            <strong>{{ selectedNode.actualTemp }}</strong>
+          </div>
+          <div class="detail-card">
+            <p>Certifications</p>
+            <strong>{{ selectedNode.certifications.join(' | ') }}</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel-card">
+        <div class="section-heading">
+          <div>
+            <p class="section-heading__eyebrow">Full route breakdown</p>
+            <h3>All nodes in one large view</h3>
+          </div>
+
+          <p class="section-heading__copy">{{ shipment.routeNodes.length }} route points</p>
+        </div>
+
+        <div class="stack-list">
+          <button
+            v-for="(node, index) in shipment.routeNodes"
+            :key="node.id"
+            type="button"
+            class="stack-item stack-item--clickable"
+            :class="{ 'stack-item--active': selectedNodeId === node.id }"
+            @click="selectNode(node.id)"
+          >
+            <div class="stack-item__row">
+              <div>
+                <p class="section-heading__eyebrow">
+                  Node {{ index + 1 }}
+                  {{
+                    index === 0
+                      ? '- Origin'
+                      : index === shipment.routeNodes.length - 1
+                        ? '- Destination'
+                        : '- Transit'
+                  }}
+                </p>
+                <strong>{{ node.city }}, {{ node.country }}</strong>
+              </div>
+
+              <StatusPill :label="node.riskScore" :tone="riskToTone(node.riskScore)" />
+            </div>
+
+            <p>{{ node.locationType }} | {{ node.locationName }}</p>
+            <p>{{ node.transportMode }} | ETA {{ node.eta }}</p>
+            <p>Required {{ node.tempRange }} | Actual {{ node.actualTemp }}</p>
+          </button>
+        </div>
+      </article>
     </section>
 
     <section class="dashboard-grid">
@@ -119,6 +296,31 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
         <article class="panel-card">
           <div class="section-heading">
             <div>
+              <p class="section-heading__eyebrow">Transport legs</p>
+              <h3>Inter-node handovers</h3>
+            </div>
+          </div>
+
+          <div class="stack-list">
+            <article v-for="leg in routeLegs" :key="leg.id" class="stack-item">
+              <div class="stack-item__row">
+                <div>
+                  <strong>{{ leg.from.city }} -> {{ leg.to.city }}</strong>
+                  <p>{{ leg.mode }} transfer</p>
+                </div>
+
+                <StatusPill :label="leg.risk" :tone="riskToTone(leg.risk)" />
+              </div>
+
+              <p>{{ leg.from.locationName }} to {{ leg.to.locationName }}</p>
+              <p>{{ leg.alerts }} linked alert(s) on this leg</p>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel-card">
+          <div class="section-heading">
+            <div>
               <p class="section-heading__eyebrow">Certificates</p>
               <h3>Lane compliance records</h3>
             </div>
@@ -134,10 +336,16 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
                 <strong>{{ certificate.name }}</strong>
                 <StatusPill
                   :label="certificate.status"
-                  :tone="certificate.status === 'Valid' ? 'validated' : certificate.status === 'Expired' ? 'rejected' : 'pending'"
+                  :tone="
+                    certificate.status === 'Valid'
+                      ? 'validated'
+                      : certificate.status === 'Expired'
+                        ? 'rejected'
+                        : 'pending'
+                  "
                 />
               </div>
-              <p>{{ certificate.scope }} • {{ certificate.issuer }}</p>
+              <p>{{ certificate.scope }} | {{ certificate.issuer }}</p>
               <p>Valid until {{ formatDate(certificate.validUntil) }}</p>
             </article>
           </div>
@@ -168,7 +376,9 @@ async function handleSave(updatedShipment: NonNullable<typeof shipment.value>) {
         </article>
       </div>
 
-      <AlertsPanel :alerts="activeAlerts" />
+      <div class="dashboard-grid__aside">
+        <AlertsPanel :alerts="activeAlerts" />
+      </div>
     </section>
 
     <ShipmentEditorDrawer

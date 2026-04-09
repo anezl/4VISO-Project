@@ -5,8 +5,13 @@ import StatusPill from '@/components/shared/StatusPill.vue'
 import type { Shipment } from '@/types/domain'
 import { riskToTone, validationToTone } from '@/types/domain'
 
-defineProps<{
+const props = defineProps<{
   shipment: Shipment
+  selectedNodeId?: string | null
+}>()
+
+const emit = defineEmits<{
+  selectNode: [nodeId: string]
 }>()
 </script>
 
@@ -21,7 +26,7 @@ defineProps<{
       <div class="flow-card__legend">
         <div class="flow-card__legend-item">
           <ThermometerSnowflake :size="16" />
-          <span>Cold chain readings per node</span>
+          <span>Cold-chain readings per node</span>
         </div>
         <div class="flow-card__legend-item">
           <ShieldCheck :size="16" />
@@ -36,7 +41,12 @@ defineProps<{
         :key="node.id"
         class="flow-track__segment"
       >
-        <article class="flow-node">
+        <button
+          type="button"
+          class="flow-node"
+          :class="{ 'flow-node--active': props.selectedNodeId === node.id }"
+          @click="emit('selectNode', node.id)"
+        >
           <div class="flow-node__top">
             <div>
               <p class="flow-node__city">{{ node.city }}, {{ node.country }}</p>
@@ -72,17 +82,17 @@ defineProps<{
             />
 
             <p class="flow-node__certs">
-              {{ node.certifications.join(' • ') }}
+              {{ node.certifications.join(' | ') }}
             </p>
           </div>
-        </article>
+        </button>
 
         <div
           v-if="index < shipment.routeNodes.length - 1"
           class="flow-connector"
           :data-testid="`connector-${index}`"
         >
-          <span>{{ node.transportMode }}</span>
+          <span>{{ node.transportMode }} to {{ shipment.routeNodes[index + 1]?.city }}</span>
           <ArrowRight :size="18" />
         </div>
       </div>

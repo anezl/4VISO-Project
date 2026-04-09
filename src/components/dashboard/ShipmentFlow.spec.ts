@@ -20,4 +20,20 @@ describe('ShipmentFlow', () => {
     expect(wrapper.text()).toContain('Air')
     expect(wrapper.find('[data-testid="connector-0"]').exists()).toBe(true)
   })
+
+  it('emits the selected node when a route card is clicked', async () => {
+    const shipment = createSeedDatabase().shipments[0]
+
+    const wrapper = mount(ShipmentFlow, {
+      props: {
+        shipment,
+        selectedNodeId: shipment.routeNodes[0]?.id,
+      },
+    })
+
+    const nodeCards = wrapper.findAll('.flow-node')
+    await nodeCards[1].trigger('click')
+
+    expect(wrapper.emitted('selectNode')?.[0]).toEqual([shipment.routeNodes[1]?.id])
+  })
 })
