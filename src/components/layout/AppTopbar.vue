@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BellRing, FlaskConical, Search, Sparkles } from 'lucide-vue-next'
+import { BellRing, FlaskConical, Search } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
@@ -22,14 +22,9 @@ const pageTitle = computed(() => (route.meta.title as string | undefined) ?? '4V
     </div>
 
     <div class="topbar__actions">
-      <div class="topbar__chip">
-        <Sparkles :size="16" />
-        <span>Mock backend ready</span>
-      </div>
-
       <div class="topbar__chip topbar__chip--search">
         <Search :size="16" />
-        <span>Shipment lookup, lanes, certificates</span>
+        <span>Search lanes, route nodes, certificates</span>
       </div>
 
       <RouterLink :to="{ name: 'notifications' }" class="topbar__notification">
