@@ -40,3 +40,53 @@ npm run build
 - Existing client briefing files remain in the repository root for reference
 - Mock data persists in browser `localStorage`
 - Route editing is available to `admin` and `logistics provider`
+
+## Backend
+
+The backend has been initialized with a **basic Express setup** to support frontend integration and team development.
+
+It currently implements a **simple authentication flow (register and login)** without any security layer or database persistence. This is a temporary MVP structure that allows the frontend to communicate with the backend during early development.
+
+### Current features
+- Basic Express server setup
+- CORS enabled for frontend communication
+- JSON body parsing enabled
+- Basic `POST /auth/register` endpoint (mock)
+- Basic `POST /auth/login` endpoint (mock)
+- Simple route structure for future expansion
+
+### Future improvements
+This backend will be extended later with:
+- MongoDB integration (database persistence)
+- Password hashing
+- JWT authentication
+- Protected routes and middleware security
+
+---
+
+## Requirements
+
+To run the backend locally, make sure you have installed the following dependencies:
+
+```json
+"dependencies": {
+  "cors": "^2.8.6",
+  "dotenv": "^17.4.2",
+  "express": "^5.2.1",
+  "mongoose": "^9.4.1"
+},
+"devDependencies": {
+  "nodemon": "^3.1.14"
+}
+```
+
+To run the backend from the /backend folder:
+
+``` bash
+npm start  
+```
+The backend will run at:
+
+```bash
+http://localhost:3000
+```
