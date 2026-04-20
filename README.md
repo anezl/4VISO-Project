@@ -57,7 +57,7 @@ It currently implements a **simple authentication flow (register and login)** wi
 
 ### Future improvements
 This backend will be extended later with:
-- MongoDB integration (database persistence)
+- All necesary routes
 - Password hashing
 - JWT authentication
 - Protected routes and middleware security
@@ -90,3 +90,20 @@ The backend will run at:
 ```bash
 http://localhost:3000
 ```
+
+### Database connection
+The backend is now connected to a **local MongoDB database** using Mongoose.
+
+This allows the application to persist data for future features such as users, shipments, companies, sensors, and temperature logs.
+
+To make the connection work, you must ensure that MongoDB is running locally and that a `.env` file exists in the `/backend` directory.
+
+### Required `.env` configuration
+
+Create a `.env` file in the backend root with the following variables:
+
+```env
+PORT=3000
+MONGO_URI=mongodb://localhost:27017/NAME_OF_PROJECT_IN_MONGODB
+```
+
