@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ArrowRight, ShieldCheck, ThermometerSnowflake } from 'lucide-vue-next'
+import { Plane, Ship, Truck } from 'lucide-vue-next'
 
 import StatusPill from '@/components/shared/StatusPill.vue'
-import type { Shipment } from '@/types/domain'
+import type { Shipment, TransportMode } from '@/types/domain'
 import { riskToTone, validationToTone } from '@/types/domain'
 
 const props = defineProps<{
@@ -13,6 +13,30 @@ const props = defineProps<{
 const emit = defineEmits<{
   selectNode: [nodeId: string]
 }>()
+
+function transportIcon(mode: TransportMode) {
+  if (mode === 'Air') {
+    return Plane
+  }
+
+  if (mode === 'Sea') {
+    return Ship
+  }
+
+  return Truck
+}
+
+function transportLabel(mode: TransportMode) {
+  if (mode === 'Air') {
+    return 'Air uplift'
+  }
+
+  if (mode === 'Sea') {
+    return 'Sea or ferry leg'
+  }
+
+  return 'Road transfer'
+}
 </script>
 
 <template>
@@ -20,50 +44,82 @@ const emit = defineEmits<{
     <div class="section-heading">
       <div>
         <p class="section-heading__eyebrow">Route visualisation</p>
-        <h3>Node-based lane flow</h3>
-      </div>
-
-      <div class="flow-card__legend">
-        <div class="flow-card__legend-item">
-          <ThermometerSnowflake :size="16" />
-          <span>Cold-chain readings per node</span>
-        </div>
-        <div class="flow-card__legend-item">
-          <ShieldCheck :size="16" />
-          <span>Validation and certifications shown inline</span>
-        </div>
+        <h3>Route overview</h3>
       </div>
     </div>
 
-    <div class="flow-track">
-      <div
-        v-for="(node, index) in shipment.routeNodes"
-        :key="node.id"
-        class="flow-track__segment"
-      >
+    <div class="flow-ribbon">
+      <template v-for="(node, index) in shipment.routeNodes" :key="node.id">
         <button
           type="button"
-          class="flow-node"
+          class="flow-node flow-node--ribbon"
           :class="{ 'flow-node--active': props.selectedNodeId === node.id }"
           @click="emit('selectNode', node.id)"
         >
-          <div class="flow-node__top">
+          <div class="flow-node__headline">
             <div>
               <p class="flow-node__city">{{ node.city }}, {{ node.country }}</p>
               <h4>{{ node.locationName }}</h4>
+              <StatusPill
+                :label="node.riskScore"
+                :tone="riskToTone(node.riskScore)"
+                class="flow-node__risk"
+              />
             </div>
-
-            <StatusPill :label="node.riskScore" :tone="riskToTone(node.riskScore)" />
           </div>
 
-          <div class="flow-node__info-grid">
+          <div class="flow-node__meta">
+            <span>{{ node.locationType }}</span>
+            <span>{{ node.validationStatus }}</span>
+          </div>
+        </button>
+
+        <div
+          v-if="index < shipment.routeNodes.length - 1"
+          class="flow-connector flow-connector--transport"
+          :data-testid="`connector-${index}`"
+        >
+          <div class="flow-connector__icon">
+            <component :is="transportIcon(node.transportMode)" :size="18" />
+          </div>
+
+          <div class="flow-connector__content">
+            <strong>{{ transportLabel(node.transportMode) }}</strong>
+            <span>{{ node.transportMode }} to {{ shipment.routeNodes[index + 1]?.city }}</span>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <details class="flow-details">
+      <summary>Route quick facts</summary>
+
+      <div class="flow-track flow-track--details">
+        <article
+          v-for="node in shipment.routeNodes"
+          :key="`${node.id}-quick-facts`"
+          class="flow-quick-card"
+        >
+          <div class="flow-quick-card__header">
             <div>
-              <p class="flow-node__label">Point</p>
-              <strong>{{ node.locationType }}</strong>
+              <p class="flow-node__city">{{ node.city }}, {{ node.country }}</p>
+              <strong>{{ node.locationName }}</strong>
             </div>
+
+            <StatusPill
+              :label="node.validationStatus"
+              :tone="validationToTone(node.validationStatus)"
+            />
+          </div>
+
+          <div class="flow-quick-card__grid">
             <div>
               <p class="flow-node__label">ETA</p>
               <strong>{{ node.eta }}</strong>
+            </div>
+            <div>
+              <p class="flow-node__label">Mode</p>
+              <strong>{{ node.transportMode }}</strong>
             </div>
             <div>
               <p class="flow-node__label">Required</p>
@@ -74,28 +130,8 @@ const emit = defineEmits<{
               <strong>{{ node.actualTemp }}</strong>
             </div>
           </div>
-
-          <div class="flow-node__footer">
-            <StatusPill
-              :label="node.validationStatus"
-              :tone="validationToTone(node.validationStatus)"
-            />
-
-            <p class="flow-node__certs">
-              {{ node.certifications.join(' | ') }}
-            </p>
-          </div>
-        </button>
-
-        <div
-          v-if="index < shipment.routeNodes.length - 1"
-          class="flow-connector"
-          :data-testid="`connector-${index}`"
-        >
-          <span>{{ node.transportMode }} to {{ shipment.routeNodes[index + 1]?.city }}</span>
-          <ArrowRight :size="18" />
-        </div>
+        </article>
       </div>
-    </div>
+    </details>
   </section>
 </template>

@@ -1,15 +1,37 @@
 <script setup lang="ts">
-import { ArrowRight, Clock3, Thermometer } from 'lucide-vue-next'
+import {
+  Clock3,
+  Plane,
+  Ship,
+  Thermometer,
+  Truck,
+} from 'lucide-vue-next'
 import { RouterLink } from 'vue-router'
 
 import StatusPill from '@/components/shared/StatusPill.vue'
-import type { Shipment } from '@/types/domain'
+import type { Shipment, TransportMode } from '@/types/domain'
 import { riskToTone } from '@/types/domain'
 
-defineProps<{
+const props = defineProps<{
   shipment: Shipment
   canEdit: boolean
 }>()
+
+function transportIcon(mode: TransportMode) {
+  if (mode === 'Air') {
+    return Plane
+  }
+
+  if (mode === 'Sea') {
+    return Ship
+  }
+
+  return Truck
+}
+
+function transportHint() {
+  return props.shipment.routeNodes[0]?.transportMode ?? 'Road'
+}
 </script>
 
 <template>
@@ -29,7 +51,10 @@ defineProps<{
         <strong>{{ shipment.originCity }}</strong>
       </div>
 
-      <ArrowRight :size="16" />
+      <div class="shipment-card__transport-chip">
+        <component :is="transportIcon(transportHint())" :size="16" />
+        <span>{{ transportHint() }}</span>
+      </div>
 
       <div>
         <p class="shipment-card__label">Destination</p>
@@ -69,8 +94,15 @@ defineProps<{
         <span>{{ shipment.ownerCompany }}</span>
       </div>
 
-      <RouterLink :to="{ name: 'dashboard', params: { shipmentId: shipment.id } }" class="button button--ghost">
-        {{ canEdit ? 'Open and edit' : 'Open dashboard' }}
+      <RouterLink
+        :to="{
+          name: 'dashboard',
+          params: { shipmentId: shipment.id },
+          query: canEdit ? { edit: '1' } : undefined,
+        }"
+        class="button button--ghost"
+      >
+        Dashboard workspace
       </RouterLink>
     </div>
   </article>
