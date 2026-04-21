@@ -4,7 +4,7 @@ import { createSeedDatabase } from '@/mocks/seed'
 import ShipmentCard from '@/components/shipments/ShipmentCard.vue'
 
 describe('ShipmentCard', () => {
-  it('opens the dashboard in edit mode for editable roles', () => {
+  it('opens the lane workspace in edit mode for editable roles', () => {
     const shipment = createSeedDatabase().shipments[0]
 
     const wrapper = mount(ShipmentCard, {
@@ -20,13 +20,13 @@ describe('ShipmentCard', () => {
     })
 
     expect(wrapper.findComponent(RouterLinkStub).props('to')).toEqual({
-      name: 'dashboard',
+      name: 'lane',
       params: { shipmentId: shipment.id },
       query: { edit: '1' },
     })
   })
 
-  it('opens the read-only dashboard for non-editable roles', () => {
+  it('opens the read-only lane workspace for non-editable roles', () => {
     const shipment = createSeedDatabase().shipments[0]
 
     const wrapper = mount(ShipmentCard, {
@@ -42,7 +42,7 @@ describe('ShipmentCard', () => {
     })
 
     expect(wrapper.findComponent(RouterLinkStub).props('to')).toEqual({
-      name: 'dashboard',
+      name: 'lane',
       params: { shipmentId: shipment.id },
       query: undefined,
     })

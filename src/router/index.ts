@@ -77,20 +77,28 @@ export const router = createRouter({
       },
       children: [
         {
-          path: 'shipments',
+          path: 'lanes',
           name: 'shipments',
           component: ShipmentsView,
           meta: {
-            title: 'Shipment Lanes',
+            title: 'Lane',
+          },
+        },
+        {
+          path: 'lane/:shipmentId',
+          name: 'lane',
+          component: DashboardView,
+          meta: {
+            title: 'Lane',
           },
         },
         {
           path: 'dashboard/:shipmentId',
-          name: 'dashboard',
-          component: DashboardView,
-          meta: {
-            title: 'Lane Dashboard',
-          },
+          redirect: (to) => ({
+            name: 'lane',
+            params: to.params,
+            query: to.query,
+          }),
         },
         {
           path: 'notifications',

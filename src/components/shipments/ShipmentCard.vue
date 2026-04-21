@@ -32,6 +32,10 @@ function transportIcon(mode: TransportMode) {
 function transportHint() {
   return props.shipment.routeNodes[0]?.transportMode ?? 'Road'
 }
+
+function displayValue(value: string, fallback: string) {
+  return value.trim() || fallback
+}
 </script>
 
 <template>
@@ -48,7 +52,7 @@ function transportHint() {
     <div class="shipment-card__lane">
       <div>
         <p class="shipment-card__label">Origin</p>
-        <strong>{{ shipment.originCity }}</strong>
+        <strong>{{ displayValue(shipment.originCity, 'Add origin') }}</strong>
       </div>
 
       <div class="shipment-card__transport-chip">
@@ -58,7 +62,7 @@ function transportHint() {
 
       <div>
         <p class="shipment-card__label">Destination</p>
-        <strong>{{ shipment.destinationCity }}</strong>
+        <strong>{{ displayValue(shipment.destinationCity, 'Add destination') }}</strong>
       </div>
     </div>
 
@@ -84,25 +88,25 @@ function transportHint() {
       </div>
 
       <div class="shipment-card__meta-item">
-        <span class="shipment-card__meta-badge">{{ shipment.alerts.length }} active alerts</span>
+        <span class="shipment-card__meta-badge">{{ shipment.reportStatus }} report</span>
       </div>
     </div>
 
     <div class="shipment-card__footer">
       <div>
         <p class="shipment-card__label">Owner</p>
-        <span>{{ shipment.ownerCompany }}</span>
+        <span>{{ displayValue(shipment.ownerCompany, 'Unassigned company') }}</span>
       </div>
 
       <RouterLink
         :to="{
-          name: 'dashboard',
+          name: 'lane',
           params: { shipmentId: shipment.id },
           query: canEdit ? { edit: '1' } : undefined,
         }"
         class="button button--ghost"
       >
-        Dashboard workspace
+        Open lane
       </RouterLink>
     </div>
   </article>

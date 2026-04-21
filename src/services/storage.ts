@@ -12,6 +12,10 @@ function ensureStringArray(value: unknown, fallback: string[]) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : fallback
 }
 
+function ensureString(value: unknown, fallback: string) {
+  return typeof value === 'string' ? value : fallback
+}
+
 function normalizeRouteNode(node: RouteNode, seededNode?: RouteNode): RouteNode {
   const fallbackCapabilities = seededNode?.operationalCapabilities ?? ['Staging']
   const fallbackHandling = seededNode?.handlingCapabilities ?? ['Perishable goods']
@@ -49,6 +53,42 @@ function normalizeShipment(shipment: Shipment, seededShipment?: Shipment): Shipm
   return {
     ...seededShipment,
     ...shipment,
+    shipperName: ensureString(shipment.shipperName, seededShipment?.shipperName ?? shipment.ownerCompany),
+    originFacility: ensureString(shipment.originFacility, seededShipment?.originFacility ?? 'Origin facility'),
+    receiverName: ensureString(shipment.receiverName, seededShipment?.receiverName ?? shipment.consignee),
+    destinationFacility: ensureString(
+      shipment.destinationFacility,
+      seededShipment?.destinationFacility ?? 'Destination facility',
+    ),
+    productType: ensureString(shipment.productType, seededShipment?.productType ?? 'Pharma'),
+    packagingDetails: ensureString(
+      shipment.packagingDetails,
+      seededShipment?.packagingDetails ?? seededShipment?.packageType ?? 'Validated shipper',
+    ),
+    dimensions: ensureString(shipment.dimensions, seededShipment?.dimensions ?? 'TBD'),
+    quantity: ensureString(shipment.quantity, seededShipment?.quantity ?? 'TBD'),
+    weight: ensureString(shipment.weight, seededShipment?.weight ?? 'TBD'),
+    specialHandling: ensureStringArray(
+      shipment.specialHandling,
+      seededShipment?.specialHandling ?? [],
+    ),
+    reportStatus: shipment.reportStatus ?? seededShipment?.reportStatus ?? 'Draft',
+    reportRecipients: ensureStringArray(
+      shipment.reportRecipients,
+      seededShipment?.reportRecipients ?? [],
+    ),
+    reportGeneratedAt:
+      typeof shipment.reportGeneratedAt === 'string' || shipment.reportGeneratedAt === null
+        ? shipment.reportGeneratedAt
+        : (seededShipment?.reportGeneratedAt ?? null),
+    reportSentAt:
+      typeof shipment.reportSentAt === 'string' || shipment.reportSentAt === null
+        ? shipment.reportSentAt
+        : (seededShipment?.reportSentAt ?? null),
+    reportLiveAt:
+      typeof shipment.reportLiveAt === 'string' || shipment.reportLiveAt === null
+        ? shipment.reportLiveAt
+        : (seededShipment?.reportLiveAt ?? null),
     routeNodes: routeNodes.map((node) =>
       normalizeRouteNode(node, seededNodesById.get(node.id)),
     ),

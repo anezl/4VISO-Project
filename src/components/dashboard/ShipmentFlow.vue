@@ -1,14 +1,22 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Plane, Ship, Truck } from 'lucide-vue-next'
 
 import StatusPill from '@/components/shared/StatusPill.vue'
 import type { Shipment, TransportMode } from '@/types/domain'
 import { riskToTone, validationToTone } from '@/types/domain'
 
-const props = defineProps<{
-  shipment: Shipment
-  selectedNodeId?: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    shipment: Shipment
+    selectedNodeId?: string | null
+    showQuickFacts?: boolean
+  }>(),
+  {
+    selectedNodeId: null,
+    showQuickFacts: true,
+  },
+)
 
 const emit = defineEmits<{
   selectNode: [nodeId: string]
@@ -37,6 +45,52 @@ function transportLabel(mode: TransportMode) {
 
   return 'Road transfer'
 }
+
+const hasVisibleRoute = computed(() =>
+  props.shipment.routeNodes.some((node) => node.city.trim() || node.locationName.trim()),
+)
+
+function nodeDisplayCity(node: Shipment['routeNodes'][number], index: number) {
+  if (node.city.trim()) {
+    return node.country.trim() ? `${node.city}, ${node.country}` : node.city
+  }
+
+  if (index === 0) {
+    return 'Add origin'
+  }
+
+  if (index === props.shipment.routeNodes.length - 1) {
+    return 'Add destination'
+  }
+
+  return 'Add stop'
+}
+
+function nodeDisplayName(node: Shipment['routeNodes'][number], index: number) {
+  if (node.locationName.trim()) {
+    return node.locationName
+  }
+
+  if (index === 0) {
+    return 'Origin point'
+  }
+
+  if (index === props.shipment.routeNodes.length - 1) {
+    return 'Destination point'
+  }
+
+  return 'Transit point'
+}
+
+function connectorLabel(node: Shipment['routeNodes'][number], index: number) {
+  const nextCity = props.shipment.routeNodes[index + 1]?.city.trim()
+
+  if (!node.city.trim() && !nextCity) {
+    return 'Route will appear here'
+  }
+
+  return `${node.transportMode} to ${nextCity || 'next checkpoint'}`
+}
 </script>
 
 <template>
@@ -48,7 +102,30 @@ function transportLabel(mode: TransportMode) {
       </div>
     </div>
 
-    <div class="flow-ribbon">
+    <div v-if="!hasVisibleRoute" class="flow-empty-state">
+      <div class="flow-empty-state__node">
+        <p class="flow-node__city">Origin</p>
+        <strong>Add the shipping location</strong>
+      </div>
+
+      <div class="flow-connector flow-connector--transport flow-connector--placeholder">
+        <div class="flow-connector__icon">
+          <Truck :size="18" />
+        </div>
+
+        <div class="flow-connector__content">
+          <strong>Route builder</strong>
+          <span>Suggested routes appear after the first steps are filled in</span>
+        </div>
+      </div>
+
+      <div class="flow-empty-state__node">
+        <p class="flow-node__city">Destination</p>
+        <strong>Add the receiving location</strong>
+      </div>
+    </div>
+
+    <div v-else class="flow-ribbon">
       <template v-for="(node, index) in shipment.routeNodes" :key="node.id">
         <button
           type="button"
@@ -58,9 +135,10 @@ function transportLabel(mode: TransportMode) {
         >
           <div class="flow-node__headline">
             <div>
-              <p class="flow-node__city">{{ node.city }}, {{ node.country }}</p>
-              <h4>{{ node.locationName }}</h4>
+              <p class="flow-node__city">{{ nodeDisplayCity(node, index) }}</p>
+              <h4>{{ nodeDisplayName(node, index) }}</h4>
               <StatusPill
+                v-if="node.city.trim() || node.locationName.trim()"
                 :label="node.riskScore"
                 :tone="riskToTone(node.riskScore)"
                 class="flow-node__risk"
@@ -85,13 +163,13 @@ function transportLabel(mode: TransportMode) {
 
           <div class="flow-connector__content">
             <strong>{{ transportLabel(node.transportMode) }}</strong>
-            <span>{{ node.transportMode }} to {{ shipment.routeNodes[index + 1]?.city }}</span>
+            <span>{{ connectorLabel(node, index) }}</span>
           </div>
         </div>
       </template>
     </div>
 
-    <details class="flow-details">
+    <details v-if="props.showQuickFacts" class="flow-details">
       <summary>Route quick facts</summary>
 
       <div class="flow-track flow-track--details">

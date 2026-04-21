@@ -47,7 +47,7 @@ onMounted(async () => {
           <div class="stack-item__actions">
             <RouterLink
               v-if="notification.shipmentId"
-              :to="{ name: 'dashboard', params: { shipmentId: notification.shipmentId } }"
+              :to="{ name: 'lane', params: { shipmentId: notification.shipmentId } }"
               class="button button--ghost"
             >
               Open lane

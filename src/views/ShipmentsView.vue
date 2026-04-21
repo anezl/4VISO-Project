@@ -40,6 +40,14 @@ const highRiskCount = computed(
     ).length,
 )
 
+const liveLaneCount = computed(
+  () => shipmentsStore.shipments.filter((shipment) => shipment.reportStatus === 'Live').length,
+)
+
+const pendingLaneCount = computed(
+  () => shipmentsStore.shipments.filter((shipment) => shipment.reportStatus === 'Pending').length,
+)
+
 async function createLane() {
   if (!authStore.currentUser) {
     return
@@ -54,7 +62,7 @@ async function createLane() {
     })
 
     await router.push({
-      name: 'dashboard',
+      name: 'lane',
       params: {
         shipmentId: shipment.id,
       },
@@ -72,10 +80,10 @@ async function createLane() {
   <div class="page-section">
     <section class="hero-card">
       <div>
-        <p class="section-heading__eyebrow">Operational overview</p>
-        <h1>Shipment lanes and route risk visibility</h1>
+        <p class="section-heading__eyebrow">Lane</p>
+        <h1>Build, compare, and track pharma lanes</h1>
         <p class="hero-card__copy">
-          Lane list for cold-chain routes, route risks, and compliance checkpoints.
+          Create a lane, enrich the product profile, compare suggested routes, and keep company lanes trackable in one workspace.
         </p>
       </div>
 
@@ -83,7 +91,7 @@ async function createLane() {
         <input
           v-model="searchQuery"
           class="input hero-card__search"
-          placeholder="Search by route, company, city, or reference"
+          placeholder="Search by lane, company, city, product, or reference"
         />
 
         <button
@@ -106,19 +114,19 @@ async function createLane() {
         tone="brand"
       />
       <MetricCard
+        label="Live lanes"
+        :value="liveLaneCount"
+        helper="Reports already approved and trackable"
+      />
+      <MetricCard
+        label="Pending lanes"
+        :value="pendingLaneCount"
+        helper="Report generated and waiting for approval"
+      />
+      <MetricCard
         label="Elevated risk lanes"
         :value="highRiskCount"
         helper="High or critical route score"
-      />
-      <MetricCard
-        label="Editable role"
-        :value="authStore.canEditRoutes ? 'Yes' : 'Read-only'"
-        helper="Creation and editing limited to logistics providers and admins"
-      />
-      <MetricCard
-        label="Average nodes"
-        :value="shipmentsStore.shipments.length ? Math.round(shipmentsStore.shipments.reduce((sum, shipment) => sum + shipment.routeNodes.length, 0) / shipmentsStore.shipments.length) : 0"
-        helper="Stops and handovers per lane"
       />
     </section>
 
@@ -127,7 +135,7 @@ async function createLane() {
         <div class="section-heading">
           <div>
             <p class="section-heading__eyebrow">Lane list</p>
-            <h2>Choose a shipment to inspect</h2>
+            <h2>Choose a lane to inspect</h2>
           </div>
 
           <p class="section-heading__copy">{{ filteredShipments.length }} result(s)</p>

@@ -4,7 +4,6 @@ import {
   Boxes,
   CircleHelp,
   FileBadge2,
-  LayoutDashboard,
   LogOut,
   ShieldCheck,
   UserRound,
@@ -21,7 +20,7 @@ const router = useRouter()
 
 const navigationItems = computed(() => [
   {
-    label: 'Shipments',
+    label: 'Lane',
     routeName: 'shipments',
     icon: Boxes,
   },
@@ -63,7 +62,7 @@ async function handleLogout() {
       <p class="sidebar__eyebrow">Workspace</p>
       <p class="sidebar__workspace-title">Lane visibility cockpit</p>
       <p class="sidebar__workspace-copy">
-        Monitor lanes, route nodes, incidents, and validation in one place.
+        Build lanes, compare routes, and track report status in one place.
       </p>
     </div>
 
@@ -101,11 +100,6 @@ async function handleLogout() {
     </nav>
 
     <div class="sidebar__shortcut-group">
-      <RouterLink :to="{ name: 'shipments' }" class="sidebar__quick-link">
-        <LayoutDashboard :size="18" />
-        <span>Dashboard workspace</span>
-      </RouterLink>
-
       <RouterLink :to="{ name: 'role-guide' }" class="sidebar__quick-link">
         <CircleHelp :size="18" />
         <span>Role guide</span>

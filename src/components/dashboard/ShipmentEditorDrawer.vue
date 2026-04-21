@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 
 import type {
   LocationType,
+  ReportStatus,
   RiskLevel,
   SecurityLevel,
   Shipment,
@@ -26,8 +27,11 @@ const certificationsMap = ref<Record<string, string>>({})
 const operationalCapabilitiesMap = ref<Record<string, string>>({})
 const handlingCapabilitiesMap = ref<Record<string, string>>({})
 const monitoringSystemsMap = ref<Record<string, string>>({})
+const specialHandlingText = ref('')
+const reportRecipientsText = ref('')
 
 const shipmentStatuses: ShipmentStatus[] = ['Scheduled', 'In Transit', 'Delayed', 'Delivered']
+const reportStatuses: ReportStatus[] = ['Draft', 'Pending', 'Live']
 const riskLevels: RiskLevel[] = ['Low', 'Medium', 'High', 'Critical']
 const validationStatuses: ValidationStatus[] = ['Validated', 'Pending', 'Rejected']
 const securityLevels: SecurityLevel[] = ['Standard', 'Enhanced', 'High Security']
@@ -54,6 +58,8 @@ function syncForm(nextShipment: Shipment | null) {
   operationalCapabilitiesMap.value = {}
   handlingCapabilitiesMap.value = {}
   monitoringSystemsMap.value = {}
+  specialHandlingText.value = nextShipment?.specialHandling.join(', ') ?? ''
+  reportRecipientsText.value = nextShipment?.reportRecipients.join(', ') ?? ''
 
   if (!nextShipment) {
     return
@@ -71,6 +77,9 @@ function syncRouteMetadata(shipment: Shipment) {
   shipment.originCity = shipment.routeNodes[0]?.city ?? shipment.originCity
   shipment.destinationCity =
     shipment.routeNodes[shipment.routeNodes.length - 1]?.city ?? shipment.destinationCity
+  shipment.originFacility = shipment.routeNodes[0]?.locationName ?? shipment.originFacility
+  shipment.destinationFacility =
+    shipment.routeNodes[shipment.routeNodes.length - 1]?.locationName ?? shipment.destinationFacility
   shipment.progress = Math.min(100, Math.max(0, shipment.progress))
 }
 
@@ -238,6 +247,15 @@ function handleSave() {
       .filter(Boolean),
   }))
 
+  form.value.specialHandling = specialHandlingText.value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  form.value.reportRecipients = reportRecipientsText.value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
   syncRouteMetadata(form.value)
   emit('save', cloneValue(form.value))
 }
@@ -298,21 +316,65 @@ function handleSave() {
               <input v-model="form.ownerCompany" class="input" />
             </label>
             <label>
+              <span>Shipper</span>
+              <input v-model="form.shipperName" class="input" />
+            </label>
+            <label>
+              <span>Origin facility</span>
+              <input v-model="form.originFacility" class="input" />
+            </label>
+            <label>
               <span>Consignee</span>
               <input v-model="form.consignee" class="input" />
+            </label>
+            <label>
+              <span>Receiver</span>
+              <input v-model="form.receiverName" class="input" />
+            </label>
+            <label>
+              <span>Destination facility</span>
+              <input v-model="form.destinationFacility" class="input" />
             </label>
             <label>
               <span>Product name</span>
               <input v-model="form.productName" class="input" />
             </label>
             <label>
+              <span>Product type</span>
+              <input v-model="form.productType" class="input" />
+            </label>
+            <label>
               <span>Package type</span>
               <input v-model="form.packageType" class="input" />
+            </label>
+            <label>
+              <span>Package details</span>
+              <input v-model="form.packagingDetails" class="input" />
+            </label>
+            <label>
+              <span>Dimensions</span>
+              <input v-model="form.dimensions" class="input" />
+            </label>
+            <label>
+              <span>Quantity</span>
+              <input v-model="form.quantity" class="input" />
+            </label>
+            <label>
+              <span>Weight</span>
+              <input v-model="form.weight" class="input" />
             </label>
             <label>
               <span>Status</span>
               <select v-model="form.status" class="input">
                 <option v-for="status in shipmentStatuses" :key="status" :value="status">
+                  {{ status }}
+                </option>
+              </select>
+            </label>
+            <label>
+              <span>Report status</span>
+              <select v-model="form.reportStatus" class="input">
+                <option v-for="status in reportStatuses" :key="status" :value="status">
                   {{ status }}
                 </option>
               </select>
@@ -332,6 +394,14 @@ function handleSave() {
             <label>
               <span>Average temperature</span>
               <input v-model="form.actualAverageTemp" class="input" />
+            </label>
+            <label class="editor-node-card__certs">
+              <span>Special handling</span>
+              <input v-model="specialHandlingText" class="input" />
+            </label>
+            <label class="editor-node-card__certs">
+              <span>Report recipients</span>
+              <input v-model="reportRecipientsText" class="input" />
             </label>
             <label>
               <span>Progress %</span>

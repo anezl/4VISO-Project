@@ -13,6 +13,7 @@ export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical'
 export type NotificationSeverity = RiskLevel
 export type CertificationStatus = 'Valid' | 'Expiring Soon' | 'Expired'
 export type SecurityLevel = 'Standard' | 'Enhanced' | 'High Security'
+export type ReportStatus = 'Draft' | 'Pending' | 'Live'
 
 export interface User {
   id: string
@@ -105,16 +106,31 @@ export interface Shipment {
   reference: string
   title: string
   ownerCompany: string
+  shipperName: string
+  originFacility: string
   consignee: string
+  receiverName: string
+  destinationFacility: string
   productName: string
+  productType: string
   packageType: string
+  packagingDetails: string
+  dimensions: string
+  quantity: string
+  weight: string
+  specialHandling: string[]
   status: ShipmentStatus
+  reportStatus: ReportStatus
   overallRisk: RiskLevel
   progress: number
   originCity: string
   destinationCity: string
   requiredTempRange: string
   actualAverageTemp: string
+  reportRecipients: string[]
+  reportGeneratedAt: string | null
+  reportSentAt: string | null
+  reportLiveAt: string | null
   updatedAt: string
   routeNodes: RouteNode[]
   alerts: AlertItem[]

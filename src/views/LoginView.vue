@@ -31,7 +31,7 @@ async function handleSubmit() {
       password: password.value,
     })
 
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/shipments'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/lanes'
     await router.push(redirect)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Unable to sign in.'
