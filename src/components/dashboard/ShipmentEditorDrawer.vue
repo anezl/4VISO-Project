@@ -40,12 +40,16 @@ const locationTypes: LocationType[] = [
 ]
 const transportModes: TransportMode[] = ['Road', 'Air', 'Sea']
 
+function cloneValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
 function generateId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 function syncForm(nextShipment: Shipment | null) {
-  form.value = nextShipment ? structuredClone(nextShipment) : null
+  form.value = nextShipment ? cloneValue(nextShipment) : null
   certificationsMap.value = {}
   operationalCapabilitiesMap.value = {}
   handlingCapabilitiesMap.value = {}
@@ -158,7 +162,7 @@ function duplicateNode(nodeId: string) {
   const duplicateId = generateId('node')
 
   form.value.routeNodes.splice(nodeIndex + 1, 0, {
-    ...structuredClone(sourceNode),
+    ...cloneValue(sourceNode),
     id: duplicateId,
     locationName: `${sourceNode.locationName} Copy`,
   })
@@ -235,275 +239,273 @@ function handleSave() {
   }))
 
   syncRouteMetadata(form.value)
-  emit('save', structuredClone(form.value))
+  emit('save', cloneValue(form.value))
 }
 </script>
 
 <template>
-  <Transition name="drawer-fade">
-    <div v-if="open" class="drawer-backdrop" @click.self="emit('close')">
-      <aside class="editor-drawer">
-        <div class="editor-drawer__header">
-          <div>
-            <p class="section-heading__eyebrow">Route editor</p>
-            <h3>Edit lane configuration</h3>
-          </div>
-
-          <button type="button" class="button button--ghost" @click="emit('close')">Close</button>
+  <section v-if="open" class="editor-workspace">
+    <div class="editor-drawer editor-drawer--inline">
+      <div class="editor-drawer__header">
+        <div>
+          <p class="section-heading__eyebrow">Route editor</p>
+          <h3>Edit lane configuration</h3>
         </div>
 
-        <div v-if="form" class="editor-drawer__body">
-          <section class="editor-drawer__section">
-            <div class="section-heading">
+        <button type="button" class="button button--ghost" @click="emit('close')">Close</button>
+      </div>
+
+      <div v-if="form" class="editor-drawer__body">
+        <section class="editor-drawer__section">
+          <div class="section-heading">
+            <div>
+              <p class="section-heading__eyebrow">Route preview</p>
+              <h4>{{ routePreview }}</h4>
+            </div>
+          </div>
+
+          <div class="editor-summary-grid">
+            <article class="editor-summary-card">
+              <p>Nodes</p>
+              <strong>{{ form.routeNodes.length }}</strong>
+            </article>
+            <article class="editor-summary-card">
+              <p>Validation</p>
+              <strong>{{ validationSummary }}</strong>
+            </article>
+            <article class="editor-summary-card">
+              <p>Temperature</p>
+              <strong>{{ form.requiredTempRange }}</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="editor-drawer__section">
+          <div class="section-heading">
+            <div>
+              <p class="section-heading__eyebrow">Lane details</p>
+              <h4>Shipment level information</h4>
+            </div>
+          </div>
+
+          <div class="editor-form-grid">
+            <label>
+              <span>Shipment title</span>
+              <input v-model="form.title" class="input" />
+            </label>
+            <label>
+              <span>Owner company</span>
+              <input v-model="form.ownerCompany" class="input" />
+            </label>
+            <label>
+              <span>Consignee</span>
+              <input v-model="form.consignee" class="input" />
+            </label>
+            <label>
+              <span>Product name</span>
+              <input v-model="form.productName" class="input" />
+            </label>
+            <label>
+              <span>Package type</span>
+              <input v-model="form.packageType" class="input" />
+            </label>
+            <label>
+              <span>Status</span>
+              <select v-model="form.status" class="input">
+                <option v-for="status in shipmentStatuses" :key="status" :value="status">
+                  {{ status }}
+                </option>
+              </select>
+            </label>
+            <label>
+              <span>Overall risk</span>
+              <select v-model="form.overallRisk" class="input">
+                <option v-for="risk in riskLevels" :key="risk" :value="risk">
+                  {{ risk }}
+                </option>
+              </select>
+            </label>
+            <label>
+              <span>Required temperature</span>
+              <input v-model="form.requiredTempRange" class="input" />
+            </label>
+            <label>
+              <span>Average temperature</span>
+              <input v-model="form.actualAverageTemp" class="input" />
+            </label>
+            <label>
+              <span>Progress %</span>
+              <input v-model.number="form.progress" type="number" min="0" max="100" class="input" />
+            </label>
+          </div>
+        </section>
+
+        <section class="editor-drawer__section">
+          <div class="editor-drawer__section-header">
+            <div>
+              <p class="section-heading__eyebrow">Nodes</p>
+              <h4>Stops and transport handovers</h4>
+            </div>
+
+            <button type="button" class="button button--secondary" @click="addNode">
+              Add transit node
+            </button>
+          </div>
+
+          <article
+            v-for="(node, index) in form.routeNodes"
+            :key="node.id"
+            class="editor-node-card"
+          >
+            <div class="editor-node-card__header">
               <div>
-                <p class="section-heading__eyebrow">Route preview</p>
-                <h4>{{ routePreview }}</h4>
+                <p class="section-heading__eyebrow">
+                  Node {{ index + 1 }} - {{ nodeStageLabel(index, form.routeNodes.length) }}
+                </p>
+                <h5>{{ node.city }}, {{ node.country }}</h5>
+              </div>
+
+              <div class="editor-node-card__actions">
+                <button
+                  type="button"
+                  class="button button--ghost"
+                  :disabled="index === 0"
+                  @click="moveNode(node.id, 'up')"
+                >
+                  Move up
+                </button>
+                <button
+                  type="button"
+                  class="button button--ghost"
+                  :disabled="index === form.routeNodes.length - 1"
+                  @click="moveNode(node.id, 'down')"
+                >
+                  Move down
+                </button>
+                <button
+                  type="button"
+                  class="button button--ghost"
+                  @click="duplicateNode(node.id)"
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  class="button button--ghost"
+                  :disabled="!canRemoveNode"
+                  @click="removeNode(node.id)"
+                >
+                  Remove
+                </button>
               </div>
             </div>
 
-            <div class="editor-summary-grid">
-              <article class="editor-summary-card">
-                <p>Nodes</p>
-                <strong>{{ form.routeNodes.length }}</strong>
-              </article>
-              <article class="editor-summary-card">
-                <p>Validation</p>
-                <strong>{{ validationSummary }}</strong>
-              </article>
-              <article class="editor-summary-card">
-                <p>Temperature</p>
-                <strong>{{ form.requiredTempRange }}</strong>
-              </article>
-            </div>
-          </section>
-
-          <section class="editor-drawer__section">
-            <div class="section-heading">
-              <div>
-                <p class="section-heading__eyebrow">Lane details</p>
-                <h4>Shipment level information</h4>
-              </div>
-            </div>
-
-            <div class="editor-form-grid">
+            <div class="editor-node-card__grid">
               <label>
-                <span>Shipment title</span>
-                <input v-model="form.title" class="input" />
+                <span>City</span>
+                <input v-model="node.city" class="input" />
               </label>
               <label>
-                <span>Owner company</span>
-                <input v-model="form.ownerCompany" class="input" />
+                <span>Country</span>
+                <input v-model="node.country" class="input" />
               </label>
               <label>
-                <span>Consignee</span>
-                <input v-model="form.consignee" class="input" />
+                <span>Location name</span>
+                <input v-model="node.locationName" class="input" />
               </label>
               <label>
-                <span>Product name</span>
-                <input v-model="form.productName" class="input" />
+                <span>Location type</span>
+                <select v-model="node.locationType" class="input">
+                  <option v-for="type in locationTypes" :key="type" :value="type">{{ type }}</option>
+                </select>
               </label>
               <label>
-                <span>Package type</span>
-                <input v-model="form.packageType" class="input" />
+                <span>Transport mode</span>
+                <select v-model="node.transportMode" class="input">
+                  <option v-for="mode in transportModes" :key="mode" :value="mode">{{ mode }}</option>
+                </select>
               </label>
               <label>
-                <span>Status</span>
-                <select v-model="form.status" class="input">
-                  <option v-for="status in shipmentStatuses" :key="status" :value="status">
+                <span>Security level</span>
+                <select v-model="node.securityLevel" class="input">
+                  <option v-for="level in securityLevels" :key="level" :value="level">{{ level }}</option>
+                </select>
+              </label>
+              <label>
+                <span>ETA</span>
+                <input v-model="node.eta" class="input" />
+              </label>
+              <label>
+                <span>Dwell time</span>
+                <input v-model="node.dwellTime" class="input" />
+              </label>
+              <label>
+                <span>Temp range</span>
+                <input v-model="node.tempRange" class="input" />
+              </label>
+              <label>
+                <span>Actual temp</span>
+                <input v-model="node.actualTemp" class="input" />
+              </label>
+              <label>
+                <span>Storage capability</span>
+                <input v-model="node.storageCapability" class="input" />
+              </label>
+              <label>
+                <span>Risk score</span>
+                <select v-model="node.riskScore" class="input">
+                  <option v-for="risk in riskLevels" :key="risk" :value="risk">{{ risk }}</option>
+                </select>
+              </label>
+              <label>
+                <span>Validation</span>
+                <select v-model="node.validationStatus" class="input">
+                  <option
+                    v-for="status in validationStatuses"
+                    :key="status"
+                    :value="status"
+                  >
                     {{ status }}
                   </option>
                 </select>
               </label>
               <label>
-                <span>Overall risk</span>
-                <select v-model="form.overallRisk" class="input">
-                  <option v-for="risk in riskLevels" :key="risk" :value="risk">
-                    {{ risk }}
-                  </option>
-                </select>
+                <span>Validator</span>
+                <input v-model="node.validatorName" class="input" />
               </label>
               <label>
-                <span>Required temperature</span>
-                <input v-model="form.requiredTempRange" class="input" />
+                <span>Last validation</span>
+                <input v-model="node.validatedAt" class="input" />
               </label>
-              <label>
-                <span>Average temperature</span>
-                <input v-model="form.actualAverageTemp" class="input" />
+              <label class="editor-node-card__certs">
+                <span>Certifications</span>
+                <input v-model="certificationsMap[node.id]" class="input" />
               </label>
-              <label>
-                <span>Progress %</span>
-                <input v-model.number="form.progress" type="number" min="0" max="100" class="input" />
+              <label class="editor-node-card__certs">
+                <span>Operational capabilities</span>
+                <input v-model="operationalCapabilitiesMap[node.id]" class="input" />
+              </label>
+              <label class="editor-node-card__certs">
+                <span>Handling capabilities</span>
+                <input v-model="handlingCapabilitiesMap[node.id]" class="input" />
+              </label>
+              <label class="editor-node-card__certs">
+                <span>Monitoring systems</span>
+                <input v-model="monitoringSystemsMap[node.id]" class="input" />
+              </label>
+              <label class="editor-node-card__certs">
+                <span>Node notes</span>
+                <textarea v-model="node.nodeNotes" class="input input--textarea" />
               </label>
             </div>
-          </section>
+          </article>
+        </section>
+      </div>
 
-          <section class="editor-drawer__section">
-            <div class="editor-drawer__section-header">
-              <div>
-                <p class="section-heading__eyebrow">Nodes</p>
-                <h4>Stops and transport handovers</h4>
-              </div>
-
-              <button type="button" class="button button--secondary" @click="addNode">
-                Add transit node
-              </button>
-            </div>
-
-            <article
-              v-for="(node, index) in form.routeNodes"
-              :key="node.id"
-              class="editor-node-card"
-            >
-              <div class="editor-node-card__header">
-                <div>
-                  <p class="section-heading__eyebrow">
-                    Node {{ index + 1 }} - {{ nodeStageLabel(index, form.routeNodes.length) }}
-                  </p>
-                  <h5>{{ node.city }}, {{ node.country }}</h5>
-                </div>
-
-                <div class="editor-node-card__actions">
-                  <button
-                    type="button"
-                    class="button button--ghost"
-                    :disabled="index === 0"
-                    @click="moveNode(node.id, 'up')"
-                  >
-                    Move up
-                  </button>
-                  <button
-                    type="button"
-                    class="button button--ghost"
-                    :disabled="index === form.routeNodes.length - 1"
-                    @click="moveNode(node.id, 'down')"
-                  >
-                    Move down
-                  </button>
-                  <button
-                    type="button"
-                    class="button button--ghost"
-                    @click="duplicateNode(node.id)"
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    type="button"
-                    class="button button--ghost"
-                    :disabled="!canRemoveNode"
-                    @click="removeNode(node.id)"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-
-              <div class="editor-node-card__grid">
-                <label>
-                  <span>City</span>
-                  <input v-model="node.city" class="input" />
-                </label>
-                <label>
-                  <span>Country</span>
-                  <input v-model="node.country" class="input" />
-                </label>
-                <label>
-                  <span>Location name</span>
-                  <input v-model="node.locationName" class="input" />
-                </label>
-                <label>
-                  <span>Location type</span>
-                  <select v-model="node.locationType" class="input">
-                    <option v-for="type in locationTypes" :key="type" :value="type">{{ type }}</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Transport mode</span>
-                  <select v-model="node.transportMode" class="input">
-                    <option v-for="mode in transportModes" :key="mode" :value="mode">{{ mode }}</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Security level</span>
-                  <select v-model="node.securityLevel" class="input">
-                    <option v-for="level in securityLevels" :key="level" :value="level">{{ level }}</option>
-                  </select>
-                </label>
-                <label>
-                  <span>ETA</span>
-                  <input v-model="node.eta" class="input" />
-                </label>
-                <label>
-                  <span>Dwell time</span>
-                  <input v-model="node.dwellTime" class="input" />
-                </label>
-                <label>
-                  <span>Temp range</span>
-                  <input v-model="node.tempRange" class="input" />
-                </label>
-                <label>
-                  <span>Actual temp</span>
-                  <input v-model="node.actualTemp" class="input" />
-                </label>
-                <label>
-                  <span>Storage capability</span>
-                  <input v-model="node.storageCapability" class="input" />
-                </label>
-                <label>
-                  <span>Risk score</span>
-                  <select v-model="node.riskScore" class="input">
-                    <option v-for="risk in riskLevels" :key="risk" :value="risk">{{ risk }}</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Validation</span>
-                  <select v-model="node.validationStatus" class="input">
-                    <option
-                      v-for="status in validationStatuses"
-                      :key="status"
-                      :value="status"
-                    >
-                      {{ status }}
-                    </option>
-                  </select>
-                </label>
-                <label>
-                  <span>Validator</span>
-                  <input v-model="node.validatorName" class="input" />
-                </label>
-                <label>
-                  <span>Last validation</span>
-                  <input v-model="node.validatedAt" class="input" />
-                </label>
-                <label class="editor-node-card__certs">
-                  <span>Certifications</span>
-                  <input v-model="certificationsMap[node.id]" class="input" />
-                </label>
-                <label class="editor-node-card__certs">
-                  <span>Operational capabilities</span>
-                  <input v-model="operationalCapabilitiesMap[node.id]" class="input" />
-                </label>
-                <label class="editor-node-card__certs">
-                  <span>Handling capabilities</span>
-                  <input v-model="handlingCapabilitiesMap[node.id]" class="input" />
-                </label>
-                <label class="editor-node-card__certs">
-                  <span>Monitoring systems</span>
-                  <input v-model="monitoringSystemsMap[node.id]" class="input" />
-                </label>
-                <label class="editor-node-card__certs">
-                  <span>Node notes</span>
-                  <textarea v-model="node.nodeNotes" class="input input--textarea" />
-                </label>
-              </div>
-            </article>
-          </section>
-        </div>
-
-        <div class="editor-drawer__footer">
-          <button type="button" class="button button--ghost" @click="emit('close')">Cancel</button>
-          <button type="button" class="button" @click="handleSave">Save lane</button>
-        </div>
-      </aside>
+      <div class="editor-drawer__footer">
+        <button type="button" class="button button--ghost" @click="emit('close')">Cancel</button>
+        <button type="button" class="button" @click="handleSave">Save lane</button>
+      </div>
     </div>
-  </Transition>
+  </section>
 </template>
