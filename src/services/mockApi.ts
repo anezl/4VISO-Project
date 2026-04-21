@@ -13,6 +13,8 @@ import type {
   Shipment,
   User,
   UserRecord,
+  Lane,
+  Requirement,
 } from '@/types/domain'
 
 function generateId(prefix: string) {
@@ -193,4 +195,43 @@ export const mockApi = {
     writeDatabase(database)
     return notification
   },
+
+  async getLanes() {
+    return readDatabase().lanes
+  },
+
+  async getRequirements() {
+    return readDatabase().requirements
+  },
+
+  async getLaneById(laneId: string) {
+    const database = readDatabase()
+    return database.lanes.find((lane) => lane.id === laneId) ?? null
+  },
+
+  async updateLane(updatedLane: Lane) {
+    const database = readDatabase()
+    const laneIndex = database.lanes.findIndex((lane) => lane.id === updatedLane.id)
+
+    if (laneIndex === -1) {
+      throw new Error('Lane not found.')
+    }
+
+    const nextLane: Lane = {
+      ...updatedLane,
+      updatedAt: new Date().toISOString(),
+    }
+
+    database.lanes[laneIndex] = nextLane
+    writeDatabase(database)
+
+    return nextLane
+  },
+
+  async createLane(lane: Lane) {
+    const database = readDatabase()
+    database.lanes.push(lane)
+    writeDatabase(database)
+    return lane
+  }
 }

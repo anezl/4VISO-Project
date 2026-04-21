@@ -152,6 +152,47 @@ export interface AppDatabase {
   users: UserRecord[]
   shipments: Shipment[]
   notifications: NotificationItem[]
+  lanes: Lane[]
+  requirements: Requirement[]
+}
+
+export interface Requirement {
+  id: string
+  productType: string
+  tempRangeMin: number
+  tempRangeMax: number
+  requiredCertifications: string[]
+  requiredCapabilities: string[]
+  securityLevelRequired: SecurityLevel
+  estimatedDurationHours: number
+}
+
+export interface TransportationSegment {
+  id: string
+  fromNodeId: string
+  toNodeId: string
+  transportMode: TransportMode
+  estimatedDurationHours: number
+  logisticsCompanyName: string
+  logisticsCompanyId: string
+  alerts: AlertItem[]
+}
+
+export interface Lane {
+  id: string
+  originCity: string
+  originCountry: string
+  destinationCity: string
+  destinationCountry: string
+  nodes: RouteNode[]
+  transportationSegments: TransportationSegment[]
+  overallRisk: RiskLevel
+  status: 'Draft' | 'Active' | 'Archived'
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  productType: string
+  requiredTempRange: string
 }
 
 export interface CreateShipmentPayload {
