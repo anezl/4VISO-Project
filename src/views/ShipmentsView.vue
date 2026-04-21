@@ -75,7 +75,7 @@ async function createLane() {
         <p class="section-heading__eyebrow">Operational overview</p>
         <h1>Shipment lanes and route risk visibility</h1>
         <p class="hero-card__copy">
-          Start from the lane list, open a route dashboard, and inspect cold-chain compliance at each node.
+          Lane list for cold-chain routes, route risks, and compliance checkpoints.
         </p>
       </div>
 
@@ -122,7 +122,7 @@ async function createLane() {
       />
     </section>
 
-    <section class="page-grid">
+    <section class="page-grid page-grid--single">
       <div class="page-grid__main">
         <div class="section-heading">
           <div>
@@ -142,34 +142,6 @@ async function createLane() {
           />
         </div>
       </div>
-
-      <aside class="panel-card">
-        <div class="section-heading">
-          <div>
-            <p class="section-heading__eyebrow">Role guide</p>
-            <h3>Who can do what?</h3>
-          </div>
-        </div>
-
-        <div class="stack-list">
-          <article class="stack-item">
-            <strong>Ordinary users and pharma companies</strong>
-            <p>Read-only visibility into lane progress, risks, notifications, and certificates.</p>
-          </article>
-          <article class="stack-item">
-            <strong>Logistics providers</strong>
-            <p>Create and edit routes, update node metadata, and manage transport handovers.</p>
-          </article>
-          <article class="stack-item">
-            <strong>Auditor / QA</strong>
-            <p>Review validation statuses, incidents, and compliance exposure across routes.</p>
-          </article>
-          <article class="stack-item">
-            <strong>Admins</strong>
-            <p>Full access to the workspace plus user overview and validation backlog.</p>
-          </article>
-        </div>
-      </aside>
     </section>
   </div>
 </template>

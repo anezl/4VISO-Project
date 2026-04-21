@@ -14,6 +14,7 @@ import NotFoundView from '@/views/NotFoundView.vue'
 import NotificationsView from '@/views/NotificationsView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import RegisterView from '@/views/RegisterView.vue'
+import RoleGuideView from '@/views/RoleGuideView.vue'
 import ShipmentsView from '@/views/ShipmentsView.vue'
 
 declare module 'vue-router' {
@@ -113,6 +114,14 @@ export const router = createRouter({
           component: ProfileView,
           meta: {
             title: 'Profile',
+          },
+        },
+        {
+          path: 'role-guide',
+          name: 'role-guide',
+          component: RoleGuideView,
+          meta: {
+            title: 'Role Guide',
           },
         },
         {

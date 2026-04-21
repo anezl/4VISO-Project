@@ -2,6 +2,7 @@
 import {
   Bell,
   Boxes,
+  CircleHelp,
   FileBadge2,
   LayoutDashboard,
   LogOut,
@@ -99,10 +100,17 @@ async function handleLogout() {
       </RouterLink>
     </nav>
 
-    <RouterLink :to="{ name: 'shipments' }" class="sidebar__quick-link">
-      <LayoutDashboard :size="18" />
-      <span>Open dashboard workspace</span>
-    </RouterLink>
+    <div class="sidebar__shortcut-group">
+      <RouterLink :to="{ name: 'shipments' }" class="sidebar__quick-link">
+        <LayoutDashboard :size="18" />
+        <span>Dashboard workspace</span>
+      </RouterLink>
+
+      <RouterLink :to="{ name: 'role-guide' }" class="sidebar__quick-link">
+        <CircleHelp :size="18" />
+        <span>Role guide</span>
+      </RouterLink>
+    </div>
 
     <button type="button" class="sidebar__logout" @click="handleLogout">
       <LogOut :size="18" />
